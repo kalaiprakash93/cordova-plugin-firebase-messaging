@@ -1,40 +1,17 @@
-# Cordova plugin for [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging/)
+# Cordova plugin for [Firebase Analytics](https://firebase.google.com/docs/analytics/)
+
 [![NPM version][npm-version]][npm-url] [![NPM downloads][npm-downloads]][npm-url] [![NPM total downloads][npm-total-downloads]][npm-url] [![PayPal donate](https://img.shields.io/badge/paypal-donate-ff69b4?logo=paypal)][donate-url] [![Twitter][twitter-follow]][twitter-url]
 
 | [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)][donate-url] | Your help is appreciated. Create a PR, submit a bug or just grab me :beer: |
 |-|-|
 
-[npm-url]: https://www.npmjs.com/package/cordova-plugin-firebase-messaging
-[npm-version]: https://img.shields.io/npm/v/cordova-plugin-firebase-messaging.svg
-[npm-downloads]: https://img.shields.io/npm/dm/cordova-plugin-firebase-messaging.svg
-[npm-total-downloads]: https://img.shields.io/npm/dt/cordova-plugin-firebase-messaging.svg?label=total+downloads
-[twitter-url]: https://twitter.com/chemerisuk
-[twitter-follow]: https://img.shields.io/twitter/follow/chemerisuk.svg?style=social&label=Follow%20me
-[donate-url]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6HLVTJDGQQ6EY&source=url
-
 ## Index
 
-<!-- MarkdownTOC levels="2,3" autolink="true" -->
+<!-- MarkdownTOC levels="2" autolink="true" -->
 
 - [Supported platforms](#supported-platforms)
 - [Installation](#installation)
-- [Adding configuration files](#adding-configuration-files)
-    - [Set custom default notification icon \(Android only\)](#set-custom-default-notification-icon-android-only)
-    - [Set custom default notification color \(Android only\)](#set-custom-default-notification-color-android-only)
-- [Type Aliases](#type-aliases)
-    - [PushPayload](#pushpayload)
-- [Functions](#functions)
-    - [clearNotifications](#clearnotifications)
-    - [deleteToken](#deletetoken)
-    - [getBadge](#getbadge)
-    - [getToken](#gettoken)
-    - [onBackgroundMessage](#onbackgroundmessage)
-    - [onMessage](#onmessage)
-    - [onTokenRefresh](#ontokenrefresh)
-    - [requestPermission](#requestpermission)
-    - [setBadge](#setbadge)
-    - [subscribe](#subscribe)
-    - [unsubscribe](#unsubscribe)
+- [Methods](#methods)
 
 <!-- /MarkdownTOC -->
 
@@ -45,19 +22,31 @@
 
 ## Installation
 
-    $ cordova plugin add cordova-plugin-firebase-messaging
+    $ cordova plugin add cordova-plugin-firebase-analytics
 
 If you get an error about CocoaPods being unable to find compatible versions, run
     
     $ pod repo update
 
-Use variables `IOS_FIREBASE_POD_VERSION` and `ANDROID_FIREBASE_BOM_VERSION` to override dependency versions on Android:
+Use variables `ANDROID_FIREBASE_ANALYTICS_VERSION` or `IOS_FIREBASE_ANALYTICS_VERSION` to override dependency versions for Firebase SDKs:
+    
+    $ cordova plugin add cordova-plugin-firebase-analytics --variable IOS_FIREBASE_POD_VERSION="~> 8.8.0" --variable ANDROID_FIREBASE_CRASHLYTICS_VERSION="19.0.+"
 
-    $ cordova plugin add cordova-plugin-firebase-messaging \
-        --variable IOS_FIREBASE_POD_VERSION="9.3.0" \
-        --variable ANDROID_FIREBASE_BOM_VERSION="30.3.1"
+NOTE: on iOS in order to collect demographic, age, gender data etc. you should additionally [include `AdSupport.framework`](https://firebase.google.com/support/guides/analytics-adsupport) into your project.
 
-## Adding configuration files
+### Disabling analytics data collection
+In some cases, you may wish to temporarily or permanently disable collection of Analytics data. You can set the value of variable `ANALYTICS_COLLECTION_ENABLED` to `false` to prevent collecting any user data:
+
+    $ cordova plugin add cordova-plugin-firebase-analytics --variable ANALYTICS_COLLECTION_ENABLED=false
+
+Later you can re-enable analytics data collection (for instance after getting end-user consent) using method [setEnabled](#setenabledenabled).
+
+### Disabling automatic screen collection
+In order to [disable automatic collection of screen view events](https://firebase.googleblog.com/2020/08/google-analytics-manual-screen-view.html) set the value of variable `AUTOMATIC_SCREEN_REPORTING_ENABLED` to `false`:
+
+    $ cordova plugin add cordova-plugin-firebase-analytics --variable AUTOMATIC_SCREEN_REPORTING_ENABLED=false
+
+### Adding required configuration files
 
 Cordova supports `resource-file` tag for easy copying resources files. Firebase SDK requires `google-services.json` on Android and `GoogleService-Info.plist` on iOS platforms.
 
@@ -78,332 +67,60 @@ Cordova supports `resource-file` tag for easy copying resources files. Firebase 
 
 This way config files will be copied on `cordova prepare` step.
 
-### Set custom default notification icon (Android only)
-Setting a custom default icon allows you to specify what icon is used for notification messages if no icon is set in the notification payload. Also use the custom default icon to set the icon used by notification messages sent from the Firebase console. If no custom default icon is set and no icon is set in the notification payload, the application icon (rendered in white) is used.
-```xml
-<platform name="android">
-    ...
-    <config-file parent="/manifest/application" target="app/src/main/AndroidManifest.xml">
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/my_custom_icon_id"/>
-    </config-file>
-</platform>
+## Methods
+Every method returns a promise that fulfills when a call was successful.
+
+### logEvent(_name_, _params_)
+Logs an app event.
+```js
+cordova.plugins.firebase.analytics.logEvent("my_event", {param1: "value1"});
 ```
 
-### Set custom default notification color (Android only)
-You can also define what color is used with your notification. Different android versions use this settings in different ways: Android < N use this as background color for the icon. Android >= N use this to color the icon and the app name.
-```xml
-<platform name="android">
-    ...
-    <config-file parent="/manifest/application" target="app/src/main/AndroidManifest.xml">
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@drawable/my_custom_color"/>
-    </config-file>
-</platform>
+Be aware of [automatically collected events](https://support.google.com/firebase/answer/6317485).
+
+### setUserId(_id_)
+Sets the user ID property.
+```js
+cordova.plugins.firebase.analytics.setUserId("12345");
+```
+This feature must be used in accordance with [Google's Privacy Policy](https://www.google.com/policies/privacy).
+
+### setUserProperty(_name_, _value_)
+Sets a user property to a given value.
+```js
+cordova.plugins.firebase.analytics.setUserProperty("name1", "value1");
 ```
 
-<!-- TypedocGenerated -->
+Be aware of [automatically collected user properties](https://support.google.com/firebase/answer/6317486?hl=en&ref_topic=6317484).
 
-## Type Aliases
-
-### PushPayload
-
- **PushPayload**: `Object`
-
-In general (for both platforms) you can only rely on custom data fields.
-
-`message_id` and `sent_time` have `google.` prefix in property name (__will be fixed__).
-
-#### Type declaration
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `aps?` | `Record`<`string`, `any`\> | IOS payload, available when message arrives in both foreground and background. |
-| `data` | `Record`<`string`, `any`\> | Custom data sent from server |
-| `gcm?` | `Record`<`string`, `any`\> | Android payload, available ONLY when message arrives in foreground. |
-| `message_id` | `string` | Message ID automatically generated by the server |
-| `sent_time` | `number` | Time in milliseconds from the Epoch that the message was sent. |
-
-## Functions
-
-### clearNotifications
-
-**clearNotifications**(): `Promise`<`void`\>
-
-Clear all notifications from system notification bar.
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.clearNotifications();
+### setCurrentScreen(_name_)
+Sets the current screen name, which specifies the current visual context in your app. This helps identify the areas in your app where users spend their time and how they interact with your app.
+```js
+cordova.plugins.firebase.analytics.setCurrentScreen("User profile");
 ```
 
-#### Returns
-
-`Promise`<`void`\>
-
-Callback when operation is completed
-
-___
-
-### deleteToken
-
-**deleteToken**(): `Promise`<`void`\>
-
-Delete the Instance ID (Token) and the data associated with it.
-
-Call getToken to generate a new one.
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.deleteToken();
+### setEnabled(_enabled_)
+Sets whether analytics collection is enabled for this app on this device.
+```js
+cordova.plugins.firebase.analytics.setEnabled(false);
 ```
 
-#### Returns
-
-`Promise`<`void`\>
-
-Callback when operation is completed
-
-___
-
-### getBadge
-
-**getBadge**(): `Promise`<`number`\>
-
-Gets current badge number (if supported).
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.getBadge().then(function(value) {
-    console.log("Badge value: ", value);
-});
+### resetAnalyticsData()
+Clears all analytics data for this instance from the device and resets the app instance ID.
+```js
+cordova.plugins.firebase.analytics.resetAnalyticsData();
 ```
 
-#### Returns
-
-`Promise`<`number`\>
-
-Promise fulfiled with the current badge value
-
-___
-
-### getToken
-
-**getToken**(`format?`): `Promise`<`string`\>
-
-Returns the current FCM token.
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.getToken().then(function(token) {
-    console.log("Got device token: ", token);
-});
+### setDefaultEventParameters(_params_)
+Adds parameters that will be set on every event logged from the SDK, including automatic ones.
+```js
+cordova.plugins.firebase.analytics.setDefaultEventParameters({foo: "bar"});
 ```
 
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `format?` | ``"apns-buffer"`` \| ``"apns-string"`` | Token representation (iOS only) |
-
-#### Returns
-
-`Promise`<`string`\>
-
-Promise fulfiled with the current FCM token
-
-___
-
-### onBackgroundMessage
-
-**onBackgroundMessage**(`callback`, `errorCallback?`): `void`
-
-Registers background push notification callback.
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.onBackgroundMessage(function(payload) {
-    console.log("New background FCM message: ", payload);
-});
-```
-
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `callback` | (`payload`: [`PushPayload`](#pushpayload)) => `void` | Callback function |
-| `errorCallback?` | (`error`: `string`) => `void` | Error callback function |
-
-#### Returns
-
-`void`
-
-___
-
-### onMessage
-
-**onMessage**(`callback`, `errorCallback?`): `void`
-
-Registers foreground push notification callback.
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.onMessage(function(payload) {
-    console.log("New foreground FCM message: ", payload);
-});
-```
-
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `callback` | (`payload`: [`PushPayload`](#pushpayload)) => `void` | Callback function |
-| `errorCallback?` | (`error`: `string`) => `void` | Error callback function |
-
-#### Returns
-
-`void`
-
-___
-
-### onTokenRefresh
-
-**onTokenRefresh**(`callback`, `errorCallback?`): `void`
-
-Registers callback to notify when FCM token is updated.
-
-Use `getToken` to generate a new token.
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.onTokenRefresh(function() {
-    console.log("Device token updated");
-});
-```
-
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `callback` | () => `void` | Callback function |
-| `errorCallback?` | (`error`: `string`) => `void` | Error callback function |
-
-#### Returns
-
-`void`
-
-___
-
-### requestPermission
-
-**requestPermission**(`options`): `Promise`<`void`\>
-
-Ask for permission to recieve push notifications (will trigger prompt on iOS).
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.requestPermission({forceShow: false}).then(function() {
-    console.log("Push messaging is allowed");
-});
-```
-
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `options` | `Object` | Additional options. |
-| `options.forceShow` | `boolean` | When value is `true` incoming notification is displayed even when app is in foreground. |
-
-#### Returns
-
-`Promise`<`void`\>
-
-Filfiled promise when permission is granted.
-
-___
-
-### setBadge
-
-**setBadge**(`badgeValue`): `Promise`<`void`\>
-
-Sets current badge number (if supported).
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.setBadge(value);
-```
-
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `badgeValue` | `number` | New badge value |
-
-#### Returns
-
-`Promise`<`void`\>
-
-Callback when operation is completed
-
-___
-
-### subscribe
-
-**subscribe**(`topic`): `Promise`<`void`\>
-
-Subscribe to a FCM topic.
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.subscribe("news");
-```
-
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `topic` | `string` | Topic name |
-
-#### Returns
-
-`Promise`<`void`\>
-
-Callback when operation is completed
-
-___
-
-### unsubscribe
-
-**unsubscribe**(`topic`): `Promise`<`void`\>
-
-Unsubscribe from a FCM topic.
-
-**`Example`**
-
-```ts
-cordova.plugins.firebase.messaging.unsubscribe("news");
-```
-
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `topic` | `string` | Topic name |
-
-#### Returns
-
-`Promise`<`void`\>
-
-Callback when operation is completed
+[npm-url]: https://www.npmjs.com/package/cordova-plugin-firebase-analytics
+[npm-version]: https://img.shields.io/npm/v/cordova-plugin-firebase-analytics.svg
+[npm-downloads]: https://img.shields.io/npm/dm/cordova-plugin-firebase-analytics.svg
+[npm-total-downloads]: https://img.shields.io/npm/dt/cordova-plugin-firebase-analytics.svg?label=total+downloads
+[twitter-url]: https://twitter.com/chemerisuk
+[twitter-follow]: https://img.shields.io/twitter/follow/chemerisuk.svg?style=social&label=Follow%20me
+[donate-url]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=4SVTMPKTAD9QC&source=url
